@@ -1,4 +1,4 @@
-package Orm
+package clientPool
 
 import (
 	"blog/Config/database"
@@ -82,7 +82,7 @@ func (this *Pool) CreateClient() *Client {
 
 	return &Client{
 		MysqlClient:	db,
-		expire:			time.Now().Add(this.Config.keepClientTime * time_unit),
+		expire:			time.Now().Add(time.Duration(this.Config.keepClientTime) * time_unit),
 	}
 }
 

@@ -1,4 +1,4 @@
-package Orm
+package clientPool
 
 import (
 	"blog/Config/database"
@@ -39,8 +39,8 @@ func init() {
 /*
  * 获取链接
  */
-func getClient() (*sql.DB, error) {
-
+func GetClient() (*sql.DB, error) {
+	// 设置超时时间
 	ticker := time.NewTicker(time.Duration(myPool.Config.clientTimeOut) * time.Second)
 	for {
 		select {
@@ -54,6 +54,7 @@ func getClient() (*sql.DB, error) {
 		case <-ticker.C:
 			return nil, errors.New("client expire time")
 		default:
+			// 已有链接数小于最大值生成新链接
 			if myPool.ClientNum < myPool.Config.MaxCap {
 				client := myPool.CreateClient()
 				myPool.useMap[client.MysqlClient] = client
@@ -67,15 +68,17 @@ func getClient() (*sql.DB, error) {
  * 关闭链接
  * 根据情况 放回链接池 / 关闭连接
  */
-func closeClient(mysqlClient *sql.DB) error {
+func CloseClient(mysqlClient *sql.DB) error {
 	client, ok := myPool.useMap[mysqlClient]
 	if !ok {
 		return errors.New("invalid mysql client")
 	}
 
 	myPool.wait.RLock()
-	defer myPool.wait.RUnlock()
-	if time.Now().Before(client.expire) && myPool.Len() < myPool.Config.InitCap {
+	clientLen := myPool.ClientNum
+	myPool.wait.RUnlock()
+	// 未过期且少于最小链接数，将链接放回链接池
+	if time.Now().Before(client.expire) && clientLen < myPool.Config.InitCap {
 		myPool.Clients <- client
 		return nil
 	}
@@ -89,7 +92,8 @@ func closeClient(mysqlClient *sql.DB) error {
 	return nil
 }
 
-func onClose() [] error {
+func OnClose() [] error {
+	// 判断管道是否已经关闭
 	_, ok := <- myPool.Clients
 	if(!ok) {
 		return nil

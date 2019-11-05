@@ -1,4 +1,4 @@
-package Orm
+package clientPool
 
 import (
 	"fmt"
@@ -21,7 +21,7 @@ func TestGetClient(t *testing.T) {
 		t.Errorf("init client num error, config init_cap : %d, client num : %d", config.InitCap, myPool.Len())
 	}
 
-	client, err := getClient()
+	client, err := GetClient()
 	if err != nil {
 		fmt.Println(client)
 	}
@@ -30,7 +30,7 @@ func TestGetClient(t *testing.T) {
 		t.Errorf("client num error after get a client, expect num : %d, actual num : %d", config.InitCap - 1, myPool.Len())
 	}
 
-	err = closeClient(client)
+	err = CloseClient(client)
 	if err != nil {
 		t.Errorf("close client error : %s", err)
 	}
@@ -47,20 +47,20 @@ func TestMore(t *testing.T) {
 		t.Errorf("config error %s", err)
 	}
 
-	client1, err := getClient()
+	client1, err := GetClient()
 	if err != nil {
 		t.Errorf("config error %s", err)
 	}
 
-	client2, err := getClient()
+	client2, err := GetClient()
 	if err != nil {
 		t.Errorf("config error %s", err)
 	}
-	client3, err := getClient()
+	client3, err := GetClient()
 	if err != nil {
 		t.Errorf("config error %s", err)
 	}
-	client4, err := getClient()
+	client4, err := GetClient()
 	if err != nil {
 		t.Errorf("config error %s", err)
 	}
@@ -69,10 +69,10 @@ func TestMore(t *testing.T) {
 		t.Errorf("client num error after get more client with init_cap, expect num %d, acutal num %d", config.InitCap + 1, myPool.ClientNum)
 	}
 
-	_ = closeClient(client1)
-	_ = closeClient(client2)
-	_ = closeClient(client3)
-	_ = closeClient(client4)
+	_ = CloseClient(client1)
+	_ = CloseClient(client2)
+	_ = CloseClient(client3)
+	_ = CloseClient(client4)
 
 }
 
@@ -86,7 +86,7 @@ func TestOverTime(t *testing.T) {
 	wait.Add(config.MaxCap)
 	for i := 0; i < config.MaxCap; i++ {
 		go func() {
-			client, err := getClient()
+			client, err := GetClient()
 			if err != nil {
 				t.Errorf("get client error %s at %d", err, i)
 			}
@@ -96,8 +96,8 @@ func TestOverTime(t *testing.T) {
 	}
 	wait.Wait()
 
-	if client, err := getClient(); err == nil {
-		err := closeClient(client)
+	if client, err := GetClient(); err == nil {
+		err := CloseClient(client)
 		if err == nil {
 			t.Errorf("close client error %s", err)
 		}
@@ -107,7 +107,7 @@ func TestOverTime(t *testing.T) {
 	wait.Add(config.MaxCap)
 	for i := range clientList {
 		go func() {
-			err := closeClient(clientList[i])
+			err := CloseClient(clientList[i])
 			if err != nil {
 				t.Errorf("close client error %s at %d", err, i)
 			}
@@ -118,7 +118,7 @@ func TestOverTime(t *testing.T) {
 }
 
 func TestWait(t *testing.T) {
-	defer onClose()
+	defer OnClose()
 
 	config, err := database.GetMysqlConfig()
 	if err != nil {
@@ -129,7 +129,7 @@ func TestWait(t *testing.T) {
 	wait.Add(config.MaxCap)
 	for i := 0; i < config.MaxCap; i++ {
 		go func() {
-			client, err := getClient()
+			client, err := GetClient()
 			if err != nil {
 				t.Errorf("get client error %s at %d", err, i)
 				return
@@ -143,7 +143,7 @@ func TestWait(t *testing.T) {
 	wait.Add(2)
 	var client *sql.DB
 	go func(client *sql.DB) {
-		client, err := getClient()
+		client, err := GetClient()
 		if err != nil {
 			t.Errorf("wait error : %s", err)
 		}
@@ -154,7 +154,7 @@ func TestWait(t *testing.T) {
 	go func() {
 		ele := clientList.Front()
 		if client1, ok := ele.Value.(*sql.DB); ok {
-			_ = closeClient(client1)
+			_ = CloseClient(client1)
 			clientList.Remove(ele)
 		} else {
 			t.Errorf("clientList element type error : %v", ele.Value)
@@ -168,7 +168,7 @@ func TestWait(t *testing.T) {
 	for ele := clientList.Front(); ele != nil; ele = ele.Next() {
 		go func(ele *list.Element) {
 			if client, ok := ele.Value.(*sql.DB); ok {
-				_ = closeClient(client)
+				_ = CloseClient(client)
 			}
 			wait.Done()
 		}(ele)

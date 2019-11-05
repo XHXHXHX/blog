@@ -6,8 +6,9 @@
     "KeepClientTime" :	6,
     
     "Host" :	"127.0.0.1",
-    "Port" :	22,
+    "Port" :	3306,
     "Username" : "root",
     "Passwd" :		"root",
-    "DBName" : "test"
+    "DBName" : "test",
+    "Prifex" : "test_"
 }

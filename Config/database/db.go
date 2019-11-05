@@ -19,6 +19,7 @@ type Mysql struct {
 	Username string
 	Passwd string
 	DBName string
+	Prifex string
 }
 
 func GetMysqlConfig() (Mysql, error) {
