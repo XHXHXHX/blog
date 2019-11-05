@@ -66,7 +66,7 @@ func (this *SqlBuild) setShowSql(params []interface{}) {
 	for _, value := range params {
 		switch val := value.(type) {
 			case string:
-				this.ShowSql = strings.Replace(this.ShowSql, "?", val, 1)
+				this.ShowSql = strings.Replace(this.ShowSql, "?", AddSingleSymbol(val), 1)
 			case int:
 				this.ShowSql = strings.Replace(this.ShowSql, "?", strconv.Itoa(val), 1)
 			default:
@@ -93,6 +93,7 @@ func (this *SqlBuild) Table(args... string) *SqlBuild {
 	if len(args) > 1 && len(args[1]) > 0 {
 		alias = args[1]
 	}
+
 	this.sqlPart.setTable(prefix + table, alias)
 	return this
 }

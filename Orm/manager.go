@@ -4,52 +4,104 @@ import (
 	"blog/Orm/clientPool"
 	"blog/Orm/result"
 	"blog/Orm/sqlBuild"
+	"database/sql"
+	"errors"
 	"strconv"
 )
 
 type Manager struct {
 	build *sqlBuild.SqlBuild
+	client *sql.DB
+	tx *sql.Tx
 }
 
 func DB() *Manager {
 	manage := &Manager{}
-	manage.build = sqlBuild.NewBuild()
 	return manage
+}
+
+func DbBegin() *Manager {
+	client,err := clientPool.GetClient()
+	if err != nil {
+		panic(err)
+	}
+	tx, err := client.Begin()
+	if err != nil {
+		panic(err)
+	}
+	return &Manager{
+		build: sqlBuild.NewBuild(),
+		client: client,
+		tx: tx,
+	}
+}
+
+func (this *Manager) DbCommit() (error) {
+	if this.tx == nil {
+		return errors.New("Please begin transaction by DbBegin() first")
+	}
+	if err := this.tx.Commit(); err != nil {
+		return err
+	}
+	err := clientPool.CloseClient(this.client)
+	if err != nil {
+		return err
+	}
+	this.tx = nil
+	this.client = nil
+	return nil
+}
+
+func (this *Manager) DbRollBack() (error) {
+	if this.tx == nil {
+		return errors.New("Please begin transaction by DbBegin() first")
+	}
+	err := this.tx.Rollback()
+	if err != sql.ErrTxDone && err != nil {
+		return err
+	}
+	err = clientPool.CloseClient(this.client)
+	if err != nil {
+		return err
+	}
+	this.tx = nil
+	this.client = nil
+	return nil
 }
 
 func (this *Manager) LastInsertId(data map[string]interface{}) (int, error) {
 	this.build.Insert(data)
-	return this.Exec(true)
+	return this.exec(true)
 }
 
 func (this *Manager) Insert(data map[string]interface{}) (int, error) {
 	this.build.Insert(data)
-	return this.Exec(false)
+	return this.exec(false)
 }
 
 func (this *Manager) MultiInsert(data []map[string]interface{}) (int, error) {
 	this.build.MultiInsert(data)
-	return this.Exec(false)
+	return this.exec(false)
 }
 
 func (this *Manager) Update(data map[string]interface{}) (int, error) {
 	this.build.Update(data)
-	return this.Exec(false)
+	return this.exec(false)
 }
 
 func (this *Manager) Delete() (int, error) {
 	this.build.Delete()
-	return this.Exec(false)
+	return this.exec(false)
 }
 
 func (this *Manager) Get(args... string) ([]map[string]string, error) {
 	this.build.Get(args...)
-	return this.Query()
+	return this.query()
 }
 
 func (this *Manager) Value(field string) (string, error) {
 	this.build.Value(field)
-	data, err := this.Query()
+	data, err := this.query()
 	if err != nil || len(data) == 0 {
 		return "", err
 	}
@@ -58,7 +110,7 @@ func (this *Manager) Value(field string) (string, error) {
 
 func (this *Manager) First() (map[string]string, error) {
 	this.build.First()
-	data, err := this.Query()
+	data, err := this.query()
 	if err != nil || len(data) == 0 {
 		return nil, err
 	}
@@ -67,7 +119,7 @@ func (this *Manager) First() (map[string]string, error) {
 
 func (this *Manager) PluckArray(field string) ([]string, error) {
 	this.build.PluckArray(field)
-	data, err := this.Query()
+	data, err := this.query()
 	if err != nil || len(data) == 0 {
 		return nil, err
 	}
@@ -80,7 +132,7 @@ func (this *Manager) PluckArray(field string) ([]string, error) {
 
 func (this *Manager) PluckMap(field, value string) (map[string]string, error) {
 	this.build.PluckMap(field, value)
-	data, err := this.Query()
+	data, err := this.query()
 	if err != nil || len(data) == 0 {
 		return nil, err
 	}
@@ -91,13 +143,14 @@ func (this *Manager) PluckMap(field, value string) (map[string]string, error) {
 	return res, nil
 }
 
+// Todo Chunk
 func (this *Manager) Chunk(num int, callback func()) {
 	this.build.Chunk(num, callback)
 }
 
 func (this *Manager) Count() (int, error) {
 	this.build.Count()
-	data, err := this.Query()
+	data, err := this.query()
 	if err != nil || len(data) == 0 {
 		return 0, err
 	}
@@ -107,7 +160,7 @@ func (this *Manager) Count() (int, error) {
 
 func (this *Manager) Max(field string) (int, error) {
 	this.build.Max(field)
-	data, err := this.Query()
+	data, err := this.query()
 	if err != nil || len(data) == 0 {
 		return 0, err
 	}
@@ -117,7 +170,7 @@ func (this *Manager) Max(field string) (int, error) {
 
 func (this *Manager) Sum(field string) (int, error) {
 	this.build.Sum(field)
-	data, err := this.Query()
+	data, err := this.query()
 	if err != nil || len(data) == 0 {
 		return 0, err
 	}
@@ -125,29 +178,35 @@ func (this *Manager) Sum(field string) (int, error) {
 	return count, nil
 }
 
+// Todo Exists
 func (this *Manager) Exists() {
 	this.build.Exists()
 }
 
+// Todo DoesntExists
 func (this *Manager) DoesntExists() {
 	this.build.DoesntExists()
 }
 
-func (this *Manager) Query() ([]map[string]string, error) {
-	client, err := clientPool.GetClient()
-	if err != nil {
-		return nil, err
+func (this *Manager) query() ([]map[string]string, error) {
+	var rows *sql.Rows
+	var err error
+	if this.tx != nil {
+		rows, err = this.tx.Query(this.build.ExeSql, this.build.ExeParam...)
+	} else {
+		client, err := clientPool.GetClient()
+		if err != nil {
+			return nil, err
+		}
+		stmt, err := client.Prepare(this.build.ExeSql)
+		if err != nil {
+			return nil, err
+		}
+		defer stmt.Close()
+		rows, err = stmt.Query(this.build.ExeParam...)
+		defer clientPool.CloseClient(client)
 	}
-	stmt, err := client.Prepare(this.build.ExeSql)
-	if err != nil {
-		return nil, err
-	}
-	defer stmt.Close()
-	rows, err := stmt.Query(this.build.ExeParam...)
-	if err != nil {
-		return nil, err
-	}
-	err = clientPool.CloseClient(client)
+
 	if err != nil {
 		return nil, err
 	}
@@ -155,22 +214,25 @@ func (this *Manager) Query() ([]map[string]string, error) {
 	return result.MakeResult(rows)
 }
 
-func (this *Manager) Exec(InsertId bool) (int, error) {
-	client, err := clientPool.GetClient()
-	if err != nil {
-		return 0, err
-	}
-	stmt, err := client.Prepare(this.build.ExeSql)
-	if err != nil {
-		return 0, err
-	}
-	defer stmt.Close()
-	ret, err := stmt.Exec(this.build.ExeParam...)
-	if err != nil {
-		return 0, err
+func (this *Manager) exec(InsertId bool) (int, error) {
+	var ret sql.Result
+	var err error
+	if this.tx != nil {
+		ret, err = this.tx.Exec(this.build.ExeSql, this.build.ExeParam...)
+	} else {
+		client, err := clientPool.GetClient()
+		if err != nil {
+			return 0, err
+		}
+		stmt, err := client.Prepare(this.build.ExeSql)
+		if err != nil {
+			return 0, err
+		}
+		defer stmt.Close()
+		ret, err = stmt.Exec(this.build.ExeParam...)
+		defer clientPool.CloseClient(client)
 	}
 
-	err = clientPool.CloseClient(client)
 	if err != nil {
 		return 0, err
 	}
@@ -251,7 +313,7 @@ func (this *Manager) ChunkToSql(num int) string {
 	this.build.Get()
 	return this.build.ShowSql
 }
-func (this *Manager) Table(args... string) *Manager {this.build.Table(args...);return this}
+func (this *Manager) Table(args... string) *Manager {this.build = sqlBuild.NewBuild();this.build.Table(args...);return this}
 func (this *Manager) Select(args... string) *Manager {this.build.Select(args...);return this}
 func (this *Manager) SelectRaw(sql string) *Manager {this.build.SelectRaw(sql);return this}
 func (this *Manager) Join(table, thatRelationField, relationCondition, thisRelationField string) *Manager {this.build.Join(table, thatRelationField, relationCondition, thisRelationField);return this}

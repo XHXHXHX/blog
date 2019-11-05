@@ -97,7 +97,7 @@ func TransferString(s interface{}) string {
 
 func InvalidOperator(option string) bool {
 	for _, char := range options {
-		if char == option {
+		if char == strings.ToLower(option) {
 			return true
 		}
 	}
