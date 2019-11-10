@@ -15,6 +15,12 @@ type Manager struct {
 	tx *sql.Tx
 }
 
+var log func(build *sqlBuild.SqlBuild)
+
+func SetDBLog(callback func(build *sqlBuild.SqlBuild)) {
+	log = callback
+}
+
 func DB() *Manager {
 	manage := &Manager{}
 	return manage
