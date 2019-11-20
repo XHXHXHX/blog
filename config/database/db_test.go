@@ -16,3 +16,8 @@ func TestGetMysqlConfig(t *testing.T) {
 	fmt.Println(config)
 	fmt.Println(reflect.TypeOf(config))
 }
+
+
+func TestConfig(t *testing.T) {
+
+}
