@@ -77,7 +77,8 @@ func registerGinRouter(router *gin.Engine, routeInfo *Route, prefix string, hand
 		case "HEAD":
 			router.HEAD(relativePath, handler...)
 		case "ANY":
-			router.Any(relativePath, handler...)
+			router.GET(relativePath, handler...)
+			router.POST(relativePath, handler...)
 		default:
 	}
 }
