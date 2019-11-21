@@ -1,6 +1,8 @@
 package library
 
 import (
+	"path"
+	"runtime"
 	"strconv"
 )
 
@@ -35,4 +37,10 @@ func TransferString(s interface{}) string {
 
 func AddSingleSymbol(s string) string {
 	return "'" + string(s) + "'"
+}
+
+func GetCurrentPath() string {
+	_, filename, _, _ := runtime.Caller(1)
+
+	return path.Dir(filename)
 }
