@@ -1,7 +1,11 @@
 package result
 
 import (
+	"blog/library/log"
 	"database/sql"
+	"errors"
+	"fmt"
+	"reflect"
 	"strconv"
 )
 
@@ -34,8 +38,10 @@ func MakeResult(rows *sql.Rows) ([]map[string] string, error) {
 					tmp[name] = strconv.Itoa(v)
 				case int64:
 					tmp[name] = strconv.FormatInt(int64(v), 10)
+				case nil:
+
 				default:
-					panic("column type error")
+					panic(fmt.Sprintf("column type error %v", v))
 			}
 		}
 
@@ -43,4 +49,42 @@ func MakeResult(rows *sql.Rows) ([]map[string] string, error) {
 	}
 
 	return result, nil
+}
+
+
+
+func ModelResult(model interface{}, resArr []map[string]string) error {
+	typ := reflect.TypeOf(model)
+	typElem := typ.Elem()
+	switch typElem.Kind() {
+	case reflect.Struct:
+		AutoReflectField(model, resArr[0])
+	case reflect.Slice:
+		val := reflect.ValueOf(model)
+		ve := val.Elem()
+		typElemElem := typElem.Elem()
+		for i := 0; i < len(resArr); i++ {
+			slice := reflect.New(typElemElem)
+			AutoReflectField(slice.Interface(), resArr[i])
+			ve.Set(reflect.Append(ve, slice.Elem()))
+		}
+	default:
+		log.New().Error("ModelResult param type error")
+		return errors.New("param type error")
+	}
+
+	return nil
+}
+
+func AutoReflectField(model interface{}, resMap map[string]string) {
+	model_type := reflect.TypeOf(model).Elem()
+	model_val := reflect.ValueOf(model)
+	model_val_elem := model_val.Elem()
+	for i := 0; i < model_type.NumField(); i++ {
+		field := model_type.Field(i)
+		tag := field.Tag.Get("from")
+		if val, ok := resMap[tag]; ok {
+			model_val_elem.Field(i).SetString(val)
+		}
+	}
 }

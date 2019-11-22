@@ -1,7 +1,6 @@
 package router
 
 import (
-	"fmt"
 	"blog/middleware"
 	"github.com/gin-gonic/gin"
 	"reflect"
@@ -29,13 +28,7 @@ type RouteGroup struct {
 func init() {
 	routeModels = make(map[string] []*RouteGroup)
 	routeModels["api"] = registerRoute(new(api)).Run()
-}
-
-func middlewareTest(gin *gin.Context) {
-
-	fmt.Println("I am Middleware")
-
-	gin.Next()
+	routeModels["admin"] = registerRoute(new(admin)).Run()
 }
 
 func InitRouter(router *gin.Engine) {

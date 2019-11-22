@@ -1,34 +1,34 @@
 package router
 
 import (
-	ctr "blog/controller/api"
+	ctr "blog/controller/admin"
 	"blog/middleware"
 	"github.com/gin-gonic/gin"
 )
 
-type api struct {
+type admin struct {
 	GlobalMiddlewre []string
 }
 
 /*
  * api 下的全局中间件
  */
-func (this *api) globalMiddleware() []string {
+func (this *admin) globalMiddleware() []string {
 	return []string{
-		"auth",
+		//"auth",
 	}
 }
 
 /*
  * 路由组
  */
-func (this *api) Run() []*RouteGroup {
+func (this *admin) Run() []*RouteGroup {
 	register := []*RouteGroup{
-		RegisterRouteGet("/home/detail", new(ctr.HomeController), "Detail"),
-		RegisterGroup("", []string{"validator"}, func(group *RouteGroup) *RouteGroup {
-			group.RegisterRouteGet("/user/login", new(ctr.UserController), "Login")
-			return group
-		}),
+		RegisterRoutePost("/login", new(ctr.LoginController), "Login"),
+		//RegisterGroup("", []string{"validator"}, func(group *RouteGroup) *RouteGroup {
+		//	group.RegisterRouteGet("/user/login", new(ctr.UserController), "Login")
+		//	return group
+		//}),
 	}
 
 
@@ -40,7 +40,7 @@ func (this *api) Run() []*RouteGroup {
  * 注册全局路由
  * 放到最前面
  */
-func (this *api) setGlobalMiddleware(routeGroup []*RouteGroup) []*RouteGroup {
+func (this *admin) setGlobalMiddleware(routeGroup []*RouteGroup) []*RouteGroup {
 	global_middleware := this.globalMiddleware()
 	var middleware_group [] gin.HandlerFunc
 	for _, name := range global_middleware {

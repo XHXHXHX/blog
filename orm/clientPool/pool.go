@@ -1,9 +1,9 @@
 package clientPool
 
 import (
-	"blog/Config/database"
+	"blog/config/database"
+	"blog/library"
 	_ "github.com/go-sql-driver/mysql"
-	"blog/Library"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -69,14 +69,14 @@ func (this *Pool) clientMysql() (*sql.DB, error) {
 	}
 
 	db, err := sql.Open("mysql", this.Config.Dsn)
-	Library.CheckErr(err)
+	library.CheckErr(err)
 
 	return db, nil
 }
 
 func (this *Pool) CreateClient() *Client {
 	db, err := this.clientMysql()
-	Library.CheckErr(err)
+	library.CheckErr(err)
 	this.ClientNum++
 	time_unit, _ := time.ParseDuration("1h")
 

@@ -1,7 +1,7 @@
 package sqlBuild
 
 import (
-	"blog/Config/database"
+	"blog/config/database"
 	"strconv"
 	"strings"
 	"time"

@@ -1,7 +1,8 @@
 package clientPool
 
 import (
-	"blog/Config/database"
+	"blog/config/database"
+	"blog/library/log"
 	"database/sql"
 	"errors"
 	"time"
@@ -10,9 +11,11 @@ import (
 func init() {
 	config, err := database.GetMysqlConfig()
 	if err != nil {
+		log.New().Panic("Mysql config read failed")
 		panic(err)
 	}
 	if config.InitCap < 0 || config.MaxCap < 0 || config.InitCap > config.MaxCap {
+		log.New().Panic("Mysql configure error")
 		panic("invalid capacity settings")
 	}
 

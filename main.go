@@ -1,8 +1,8 @@
 package main
 
 import (
-	"blog/library/log"
 	"blog/router"
+	"blog/library/log"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"runtime/debug"

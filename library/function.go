@@ -1,6 +1,8 @@
 package library
 
 import (
+	"crypto/md5"
+	"fmt"
 	"path"
 	"runtime"
 	"strconv"
@@ -43,4 +45,19 @@ func GetCurrentPath() string {
 	_, filename, _, _ := runtime.Caller(1)
 
 	return path.Dir(filename)
+}
+
+func ArrayToMayFromKey(arr []string) map[string]string {
+	arr_map := make(map[string]string)
+	for _, item := range arr {
+		key := string(item)
+		arr_map[key] = key
+	}
+	return arr_map
+}
+
+func Md5Encryption(s string) string {
+	data := []byte(s)
+	has := md5.Sum(data)
+	return fmt.Sprintf("%x", has) //将[]byte转成16进制
 }
